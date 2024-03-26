@@ -29,6 +29,7 @@ hashTable *createHashTable(int i)
 
 int main()
 {
+    //hi
     hashTable *HT = createHashTable(100);
     char DO;
     while (scanf(" %c", &DO) == 1) // while something is in buffer
