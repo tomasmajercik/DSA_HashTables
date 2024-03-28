@@ -9,21 +9,15 @@ typedef struct Person
     char *surname;
     char *birthdate;
     int accountBalance;
+    struct Person *next; // Pointer to the next person in case of collisions
 } Person;
-
-typedef struct NodeInHashTable
-{
-    char key;
-    Person *data;
-    struct NodeInHashTable *next;
-} NodeInHashTable;
 
 typedef struct hashTable
 {
-    unsigned int size;
-    NodeInHashTable **table;
+    int size;
+    Person **table;
 } hashTable;
-
+// string operations
 int string2int(const char e[])
 {
     char negative = '0';
@@ -63,14 +57,12 @@ int string2int(const char e[])
 
     return Cent;
 }
-
 void copyString(char *dest, const char *src)
 {
     while (*src)
         *dest++ = *src++;
     *dest = '\0';
 }
-
 // function to create new person
 Person *createPerson(const char *name, const char *surname, const char *birthdate, int balance)
 {
@@ -86,24 +78,7 @@ Person *createPerson(const char *name, const char *surname, const char *birthdat
     person->accountBalance = balance;
     return person;
 }
-
-// function to create new node in hash table
-NodeInHashTable *createNode(const char *name, const char *surname, const char *birthdate, Person *data)
-{
-    NodeInHashTable *node = (NodeInHashTable *) malloc(sizeof(NodeInHashTable));
-    if (node == NULL)
-        return NULL;
-
-    copyString(node->data->name, name);
-    copyString(node->data->surname, surname);
-    copyString(node->data->birthdate, birthdate);
-
-    node->data = data;
-
-    node->next = NULL;
-    return node;
-}
-
+// function to create hash table
 hashTable *createHashTable(int size)
 {
     hashTable *ht = (hashTable *) malloc(sizeof(hashTable));
@@ -111,7 +86,7 @@ hashTable *createHashTable(int size)
         return NULL;
 
     ht->size = size;
-    ht->table = (NodeInHashTable **) malloc(size * sizeof(NodeInHashTable *));
+    ht->table = (Person **) malloc(size * sizeof(Person *));
     if (ht->table == NULL)
     {
         free(ht);
@@ -122,6 +97,36 @@ hashTable *createHashTable(int size)
 
     return ht;
 }
+// hash function
+int hash(const char *str)
+{
+    int H = 0;
+    for (int i = 0; str[i] != '\0'; i++)
+        H = 31 * H + str[i];
+    return H;
+}
+// insert function
+void insert(hashTable *ht, const char *name, const char *surname, const char *birthdate, int balance)
+{
+    int index = hash(name) % ht->size;
+    // Create a new person
+    Person *newPerson = createPerson(name, surname, birthdate, balance);
+    if (newPerson == NULL)
+    {
+        printf("Memory allocation failed. Unable to insert.\n"); //? delete this line
+        return;
+    }
+    // Insert the new person into the hash table
+    if (ht->table[index] == NULL)
+        ht->table[index] = newPerson; // If the slot is empty, insert the new person directly
+    else // there's already a person at this index, chain the new person to it
+    {
+        Person *current = ht->table[index];
+        while (current->next != NULL)
+            current = current->next;
+        current->next = newPerson;
+    }
+}
 
 void freeAll(hashTable *ht)
 {
@@ -129,24 +134,22 @@ void freeAll(hashTable *ht)
         return;
     for (int i = 0; i < ht->size; i++)
     {
-        NodeInHashTable *current = ht->table[i];
+        Person *current = ht->table[i];
         while (current != NULL)
         {
-            NodeInHashTable *temp = current;
+            Person *temp = current;
             current = current->next;
 
-            free(temp->data->name);
-            free(temp->data->surname);
-            free(temp->data->birthdate);
-            free(temp->data);
-
+            free(temp->name);
+            free(temp->surname);
+            free(temp->birthdate);
             free(temp);
+
         }
     }
     free(ht->table);
     free(ht);
 }
-
 int main()
 {
     //hi
