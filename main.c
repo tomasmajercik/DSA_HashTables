@@ -5,24 +5,26 @@
 
 typedef struct Person
 {
-    char name;
-    char surname;
-    char birthdate;
-    double accountBalance;
+    char *name;
+    char *surname;
+    char *birthdate;
+    int accountBalance;
 } Person;
+
 typedef struct NodeInHashTable
 {
     char key;
-    Person data;
+    Person *data;
     struct NodeInHashTable *next;
 } NodeInHashTable;
+
 typedef struct hashTable
 {
     unsigned int size;
     NodeInHashTable **table;
 } hashTable;
 
-int string2int(char e[])
+int string2int(const char e[])
 {
     char negative = '0';
     int i = 0;
@@ -62,40 +64,87 @@ int string2int(char e[])
     return Cent;
 }
 
-void copyString(char *dest, char *src)
+void copyString(char *dest, const char *src)
 {
     while (*src)
         *dest++ = *src++;
     *dest = '\0';
 }
 
-hashTable *createHashTable(int i)
+// function to create new person
+Person *createPerson(const char *name, const char *surname, const char *birthdate, int balance)
 {
-    return NULL;
-}
-
-Person *create_person(char *name, char *surname, char *birthdate, double balance)
-{
-    Person *person = (Person *)malloc(sizeof(Person));
+    Person *person = (Person *) malloc(sizeof(Person));
     if (person == NULL)
         return NULL;
 
-    copyString(&person->name, name);
-    copyString(&person->surname, surname);
-    copyString(&person->birthdate, birthdate);
+    // Allocate memory and copy strings
+    copyString(person->name, name);
+    copyString(person->surname, surname);
+    copyString(person->birthdate, birthdate);
 
+    person->accountBalance = balance;
     return person;
 }
 
-
-int hash(char *str)
+// function to create new node in hash table
+NodeInHashTable *createNode(const char *name, const char *surname, const char *birthdate, Person *data)
 {
-    int H = 0;
-    for (int i = 0; str[i] != '\0'; i++)
+    NodeInHashTable *node = (NodeInHashTable *) malloc(sizeof(NodeInHashTable));
+    if (node == NULL)
+        return NULL;
+
+    copyString(node->data->name, name);
+    copyString(node->data->surname, surname);
+    copyString(node->data->birthdate, birthdate);
+
+    node->data = data;
+
+    node->next = NULL;
+    return node;
+}
+
+hashTable *createHashTable(int size)
+{
+    hashTable *ht = (hashTable *) malloc(sizeof(hashTable));
+    if (ht == NULL)
+        return NULL;
+
+    ht->size = size;
+    ht->table = (NodeInHashTable **) malloc(size * sizeof(NodeInHashTable *));
+    if (ht->table == NULL)
     {
-        H = 31 * H + str[i];
+        free(ht);
+        return NULL;
     }
-    return H;
+    for (int i = 0; i < size; i++)
+        ht->table[i] = NULL;
+
+    return ht;
+}
+
+void freeAll(hashTable *ht)
+{
+    if (ht == NULL)
+        return;
+    for (int i = 0; i < ht->size; i++)
+    {
+        NodeInHashTable *current = ht->table[i];
+        while (current != NULL)
+        {
+            NodeInHashTable *temp = current;
+            current = current->next;
+
+            free(temp->data->name);
+            free(temp->data->surname);
+            free(temp->data->birthdate);
+            free(temp->data);
+
+            free(temp);
+        }
+    }
+    free(ht->table);
+    free(ht);
 }
 
 int main()
@@ -130,5 +179,7 @@ int main()
             balance = string2int(e);
         }
     }
+
+    freeAll(HT);
     return 0;
 }
