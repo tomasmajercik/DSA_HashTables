@@ -60,6 +60,8 @@ int string2int(const char e[])
 }
 void copyString(char *dest, const char *src)
 {
+    if (dest == NULL)
+        return;
     while (*src)
         *dest++ = *src++;
     *dest = '\0';
@@ -76,14 +78,15 @@ int stringCmp(const char str1[], const char str2[])
     int i = 0;
     while (str1[i] != '\0' || str2[i] != '\0')
     {
-        if (str1[i] > str2[i])
-            return -1;
         if (str1[i] < str2[i])
             return 1;
+        if (str1[i] > str2[i])
+            return -1;
         i++;
     }
     return 0; // else they must be the same
 }
+
 // function to create new person
 Person *createPerson(const char *name, const char *surname, const char *birthdate, int balance)
 {
@@ -91,7 +94,17 @@ Person *createPerson(const char *name, const char *surname, const char *birthdat
     if (person == NULL)
         return NULL;
 
-    // Allocate memory and copy strings
+    person->name = (char *) malloc((stringLength(name) + 1) * sizeof(char));
+    person->surname = (char *) malloc((stringLength(surname) + 1) * sizeof(char));
+    person->birthdate = (char *) malloc((stringLength(birthdate) + 1) * sizeof(char));
+
+    if (person->name == NULL || person->surname == NULL || person->birthdate == NULL)
+    {
+        free(person);
+        return NULL;
+    }
+
+    // Copy strings
     copyString(person->name, name);
     copyString(person->surname, surname);
     copyString(person->birthdate, birthdate);
@@ -99,6 +112,7 @@ Person *createPerson(const char *name, const char *surname, const char *birthdat
     person->accountBalance = balance;
     return person;
 }
+
 // function to create hash table
 hashTable *createHashTable(int size)
 {
@@ -119,9 +133,9 @@ hashTable *createHashTable(int size)
     return ht;
 }
 // hash function
-int hash(const char *firstname, const char *lastname, const char *date, int table_size)
+unsigned int hash(const char *firstname, const char *lastname, const char *date, int table_size)
 {
-    int result = 0;
+    unsigned int result = 0;
     for (int i = 0; firstname[i] != '\0'; i++)
         result = 33 * result + firstname[i];
     for (int i = 0; lastname[i] != '\0'; i++)
@@ -131,26 +145,29 @@ int hash(const char *firstname, const char *lastname, const char *date, int tabl
 
     return result % table_size;
 }
-// hashMap function
+// hashMap functions
 void insert(hashTable *ht, const char *name, const char *surname, const char *birthdate, int balance)
 {
-    int index = hash(name, surname, birthdate, ht->size);
+    unsigned int index = hash(name, surname, birthdate, ht->size);
 
     // Create a new person
     Person *newPerson = createPerson(name, surname, birthdate, balance);
     if (newPerson == NULL)
     {
-        printf("failed");
+        printf("insert failed\n");
         return;
     }
-
-    // If the slot is empty, insert the new person directly
     if (ht->table[index] == NULL)
     {
         ht->table[index] = newPerson;
-    } else // If there's already a person at this index, chain the new person to it
+    } else // If there's person at taht index, chain new person to it
     {
         Person *current = ht->table[index];
+        if (current == NULL)
+        {
+            ht->table[index] = newPerson;
+            return;
+        }
         while (current->next != NULL)
             current = current->next;
         current->next = newPerson;
@@ -158,23 +175,22 @@ void insert(hashTable *ht, const char *name, const char *surname, const char *bi
 }
 Person *search(hashTable *ht, const char *name, const char *surname, const char *birthdate)
 {
-    int index = hash(name, surname, birthdate, ht->size);
+    unsigned int index = hash(name, surname, birthdate, ht->size);
     Person *current = ht->table[index];
     while (current != NULL)
     {
-        // Compare name, surname, and birthdate
         if (stringCmp(current->name, name) == 0 &&
             stringCmp(current->surname, surname) == 0 &&
             stringCmp(current->birthdate, birthdate) == 0)
         {
-            return current; // Found a match, return the person
+            return current;
         }
-        current = current->next; // Move to the next person in the linked list
+        current = current->next;
     }
 
     return NULL; // No match found
 }
-void update(hashTable *ht, const char *name, const char *surname, const char *birthdate, int amount)
+void update(hashTable *ht, const char *name, const char *surname, const char *birthdate, int amount, char *newline)
 {
     Person *person = search(ht, name, surname, birthdate);
     if (person != NULL)
@@ -182,13 +198,26 @@ void update(hashTable *ht, const char *name, const char *surname, const char *bi
         if ((person->accountBalance + amount) >= 0)
         {
             person->accountBalance += amount;
-        } else
-        {
-            printf("failed");
         }
-    } else
+        else
+        {
+            if(*newline == '1')
+            {
+                printf("\n");
+
+            }
+            printf("update failed");
+            *newline = '1';
+        }
+    }
+    else
     {
-        printf("failed");
+        if(*newline == '1')
+        {
+            printf("\n");
+        }
+        printf("update failed");
+        *newline = '1';
     }
 }
 void delete(hashTable *ht, const char *name, const char *surname, const char *birthdate)
@@ -213,15 +242,20 @@ void delete(hashTable *ht, const char *name, const char *surname, const char *bi
             free(current->name);
             free(current->surname);
             free(current->birthdate);
+
+            current->name = NULL;
+            current->surname = NULL;
+            current->birthdate = NULL;
             free(current);
             return;
         }
         prev = current;
         current = current->next;
     }
-    printf("failed");
+    printf("delete failed\n");
 }
 
+// memory stuff
 void freeAll(hashTable *ht)
 {
     if (ht == NULL)
@@ -247,10 +281,10 @@ void freeAll(hashTable *ht)
 
 int main()
 {
-    //hi
-    hashTable *HT = createHashTable(100);
+    hashTable *HT = createHashTable(6097);
     char DO;
     int balance;
+    char newline = '0';
 
     while (scanf(" %c", &DO) == 1) // while something is in buffer
     {
@@ -260,24 +294,51 @@ int main()
             char e[SIZE];
             scanf("%s %s %s %s", name, surname, birthDate, e);
             balance = string2int(e);
-            printf("%d", balance);
-        } else if (DO == 'd') // delete
+            insert(HT, name, surname, birthDate, balance);
+        }
+        else if (DO == 'd') // delete
         {
             char name[SIZE], surname[SIZE], birthDate[11];
             scanf("%s %s %s", name, surname, birthDate);
-        } else if (DO == 's') // search
+
+            delete(HT, name, surname, birthDate);
+        }
+        else if (DO == 's') // search
         {
             char name[SIZE], surname[SIZE], birthDate[11];
             scanf("%s %s %s", name, surname, birthDate);
-        } else if (DO == 'u') // update
+
+            Person *person = search(HT, name, surname, birthDate);
+            if(person == NULL)
+            {
+                if(newline == '1')
+                    printf("\n");
+                printf("search failed");
+                newline = '1';
+            }
+            else
+            {
+                if(newline == '1')
+                    printf("\n");
+                if(person->accountBalance%100 < 10 && person->accountBalance%100 >= 0)
+                    printf("%d,0%d", person->accountBalance/100, person->accountBalance%100);
+                else
+                    printf("%d,%d", person->accountBalance/100, person->accountBalance%100);
+                newline = '1';
+            }
+
+        }
+        else if (DO == 'u') // update
         {
             char name[SIZE], surname[SIZE], birthDate[11], e[SIZE];
 
             scanf("%s %s %s %s", name, surname, birthDate, e);
             balance = string2int(e);
+
+            update(HT, name, surname, birthDate, balance, &newline);
         }
     }
 
-    freeAll(HT);
+    // freeAll(HT);
     return 0;
 }
