@@ -1,7 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SIZE 12
+#define SIZE 15
+#define HASHNUM 39
+#define TABLESIZE 11587
+
+//2 tests passed: 12,39,9689 / 15,39,11587
 
 typedef struct Person
 {
@@ -93,13 +97,14 @@ void copyString(char *dest, const char *src)
         *dest++ = *src++;
     *dest = '\0';
 }
-int stringLength(const char s[])
+int stringLength(const char *s)
 {
     int result = 0;
     while (s[result] != '\0')
         result++;
     return result;
 }
+
 int stringCmp(const char str1[], const char str2[])
 {
     int i = 0;
@@ -121,7 +126,8 @@ Person *createPerson(const char *key, int balance)
     if (person == NULL)
         return NULL;
 
-    person->key = (char *) malloc((stringLength(key) + 1) * sizeof(char));
+    // person->key = (char *) malloc((stringLength(key) + 1) * sizeof(char));
+    person->key = (char *) malloc((2*SIZE) * sizeof(char)); // 3x wrong, zbytok timeout
 
     if (person->key == NULL)
     {
@@ -160,12 +166,12 @@ unsigned long hash(const char *key, int table_size)
 {
     unsigned long result = 0;
     for (int i = 0; key[i] != '\0'; i++)
-        result = 31 * result + key[i];
+        result = HASHNUM * result + key[i];
 
     return result % table_size;
 }
 // hashMap functions
-void insert(hashTable *ht, const char *key, int balance)
+void insert(hashTable *ht, const char *key, int balance, char *newline)
 {
     unsigned long index = hash(key, ht->size);
 
@@ -173,7 +179,13 @@ void insert(hashTable *ht, const char *key, int balance)
     Person *newPerson = createPerson(key, balance);
     if (newPerson == NULL)
     {
-        printf("insert failed\n");
+        if(*newline == '1')
+        {
+            printf("\n");
+
+        }
+        printf("insert failed");
+        *newline = '1';
         return;
     }
     if (ht->table[index] == NULL)
@@ -237,7 +249,7 @@ void update(hashTable *ht, const char *key, int amount, char *newline)
         *newline = '1';
     }
 }
-void delete(hashTable *ht, const char *key)
+void delete(hashTable *ht, const char *key, char *newline)
 {
     unsigned long index = hash(key, ht->size);
     Person *current = ht->table[index];
@@ -261,7 +273,13 @@ void delete(hashTable *ht, const char *key)
         prev = current;
         current = current->next;
     }
-    printf("delete failed\n");
+    if(*newline == '1')
+    {
+        printf("\n");
+
+    }
+    printf("delete failed");
+    *newline = '1';
 }
 
 
@@ -295,7 +313,7 @@ void freeAll(hashTable *ht)
 
 int main()
 {
-    hashTable *HT = createHashTable(10957);
+    hashTable *HT = createHashTable(TABLESIZE);
     char DO;
     int balance;
     char newline = '0';
@@ -312,7 +330,7 @@ int main()
             balance = string2int(e);
             connect(key, name, surname, birthDate);
 
-            insert(HT, key, balance);
+            insert(HT, key, balance, &newline);
         }
         else if (DO == 'd') // delete
         {
@@ -320,7 +338,7 @@ int main()
             scanf("%s %s %s", name, surname, birthDate);
             connect(key, name, surname, birthDate);
 
-            delete(HT, key);
+            delete(HT, key, &newline);
         }
         else if (DO == 's') // search
         {
